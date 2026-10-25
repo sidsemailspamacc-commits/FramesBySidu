@@ -1,251 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FramesBySidu — A Landscape Photography Journal</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-<!-- Firebase (compat SDKs — work as plain scripts, no build step) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-firestore-compat.min.js"></script>
-
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frames by Sidu — Photography Journal</title>
+<meta name="description" content="A photography journal of landscapes, places and little moments worth remembering.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
-  :root{
-    --bg:#0A0D13; --surface:#11151F; --surface-2:#161B27;
-    --ink:#E9EDF6; --ink-soft:#8995AC;
-    --blue:#3D7FFF; --blue-bright:#6FA3FF; --blue-deep:#1E4FA8;
-    --line:#1C2330; --line-strong:#2A3344;
-    --display:'Source Serif 4', serif; --body:'IBM Plex Sans', sans-serif; --mono:'IBM Plex Mono', monospace;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; -webkit-font-smoothing:antialiased;}
-  a{color:inherit;text-decoration:none;}
-  img,svg{display:block;max-width:100%;}
-  .wrap{max-width:1100px;margin:0 auto;padding:0 32px;}
-
-  .horizon{position:fixed; top:0; left:0; right:0; height:3px; background:var(--line); z-index:50;}
-  .horizon-fill{height:100%; width:0%; background:var(--blue); transition:width .08s linear;}
-
-  header{position:sticky; top:3px; z-index:40; background:rgba(10,13,19,0.85); backdrop-filter:blur(6px); border-bottom:1px solid var(--line);}
-  nav{display:flex; align-items:center; justify-content:space-between; padding:22px 0;}
-  .logo{font-family:var(--display); font-size:22px; font-weight:600;}
-  .logo span{color:var(--blue-bright);}
-  .nav-links{display:flex; gap:32px; font-size:14px;}
-  .nav-links a{color:var(--ink-soft);}
-  .nav-links a:hover{color:var(--ink);}
-
-  .banner{display:none; background:#241419; color:#E2776A; border:1px solid #43242C; border-radius:3px; padding:14px 18px; font-size:13.5px; margin:24px 0;}
-  .banner.show{display:block;}
-  .banner code{background:var(--surface-2); padding:1px 5px; border-radius:2px;}
-
-  .hero{padding:72px 0 48px; display:grid; grid-template-columns:1.1fr 0.9fr; gap:64px; align-items:center;}
-  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue-bright); margin-bottom:18px; display:flex; align-items:center; gap:10px;}
-  .eyebrow::before{content:'';width:18px;height:1px;background:var(--blue-bright);}
-  h1.title{font-family:var(--display); font-weight:600; font-size:clamp(34px,4.6vw,54px); line-height:1.07; letter-spacing:-0.01em; margin-bottom:20px;}
-  .hero p.lede{font-size:16.5px; color:var(--ink-soft); max-width:440px; margin-bottom:24px;}
-  .hero-meta{font-family:var(--mono); font-size:12px; color:var(--ink-soft); display:flex; gap:18px; flex-wrap:wrap;}
-  .hero-meta b{color:var(--ink); font-weight:500;}
-  .hero-art{aspect-ratio:4/5; border-radius:2px; overflow:hidden; background:linear-gradient(180deg,#0D1626 0%,#0F1F3A 45%,#13294D 75%,#0A1424 100%);}
-  .hero-art svg{width:100%; height:100%;}
-
-  .section-head{display:flex; align-items:baseline; justify-content:space-between; border-top:1px solid var(--line); padding-top:26px; margin:48px 0 32px;}
-  .section-head h2{font-family:var(--display); font-weight:600; font-size:26px;}
-  .section-head .count{font-family:var(--mono); font-size:12px; color:var(--ink-soft);}
-
-  .journal{display:grid; grid-template-columns:repeat(3,1fr); gap:36px 28px; padding-bottom:60px;}
-  .entry{cursor:pointer;}
-  .entry-art{aspect-ratio:4/3; border-radius:2px; overflow:hidden; margin-bottom:14px; background:var(--surface);}
-  .entry-art img{width:100%; height:100%; object-fit:cover; transition:transform .5s ease;}
-  .entry:hover .entry-art img{transform:scale(1.04);}
-  .entry h3{font-family:var(--display); font-weight:600; font-size:18px; line-height:1.25; margin-bottom:6px;}
-  .entry-fielddata{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft); display:flex; gap:10px; flex-wrap:wrap;}
-
-  .empty-state{padding:60px 0 80px; text-align:center; border-top:1px solid var(--line); margin-top:48px;}
-  .empty-state svg{width:120px; margin:0 auto 20px;}
-  .empty-state h3{font-family:var(--display); font-size:22px; margin-bottom:10px;}
-  .empty-state p{color:var(--ink-soft); margin-bottom:6px; font-size:14.5px;}
-
-  footer{border-top:1px solid var(--line); padding:36px 0 48px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;}
-  .foot-note{font-family:var(--mono); font-size:11px; color:var(--ink-soft);}
-
-  .lightbox{position:fixed; inset:0; background:rgba(4,6,10,0.94); display:none; align-items:center; justify-content:center; z-index:100; padding:40px;}
-  .lightbox.open{display:flex;}
-  .lightbox img{max-width:90vw; max-height:78vh; object-fit:contain; border-radius:2px;}
-  .lightbox-cap{position:absolute; bottom:36px; left:0; right:0; text-align:center; color:#C7D2E6; font-family:var(--mono); font-size:12px;}
-  .lightbox-close{position:absolute; top:28px; right:36px; color:#C7D2E6; font-size:28px; line-height:1; cursor:pointer;}
-
-  @media (max-width:900px){
-    .hero{grid-template-columns:1fr; gap:32px; padding-top:40px;}
-    .journal{grid-template-columns:repeat(2,1fr);}
-    .nav-links{gap:18px; font-size:13px;}
-    .wrap{padding:0 20px;}
-  }
-  @media (max-width:560px){ .journal{grid-template-columns:1fr;} }
-  a:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} html{scroll-behavior:auto;} }
-</style>
-</head>
+:root{--bg:#0a0d13;--surface:#11151f;--surface2:#161b27;--ink:#e9edf6;--soft:#8995ac;--accent:#a4b6a0;--line:#252d3a;--display:'Source Serif 4',Georgia,serif;--body:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--body);-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}.wrap{max-width:1160px;padding:0 28px;margin:auto}.progress{position:fixed;z-index:60;inset:0 0 auto;height:3px;background:var(--line)}.progress span{display:block;height:100%;width:0;background:var(--accent)}header{position:sticky;top:3px;z-index:40;background:#0a0d13e8;backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}nav{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:21px 0}.logo{font:600 23px var(--display);letter-spacing:-.03em}.logo span{color:var(--accent)}.links{display:flex;gap:25px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--soft)}.links a:hover{color:var(--ink)}.eyebrow{font:11px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:54px;align-items:center;padding:72px 0 65px}.hero h1{font:500 clamp(42px,6vw,74px)/1.02 var(--display);letter-spacing:-.045em;margin:0 0 22px}.hero p{max-width:480px;color:var(--soft);font-size:17px}.hero-meta{display:flex;gap:22px;margin-top:28px;color:var(--soft);font:11px var(--mono)}.hero-meta strong{color:var(--ink);font-weight:500}.hero-image{width:100%;aspect-ratio:4/5;object-fit:cover;background:var(--surface);border-radius:2px}.hero-fallback{background:linear-gradient(180deg,#202c3b,#314333 55%,#111820);display:grid;place-items:center;color:#e9edf6;font:13px var(--mono);letter-spacing:.08em}.section-head{border-top:1px solid var(--line);padding-top:24px;margin:12px 0 24px;display:flex;align-items:baseline;justify-content:space-between;gap:16px}.section-head h2,.section h2{font:500 30px var(--display);margin:0}.count{color:var(--soft);font:11px var(--mono)}.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}.filter{font:11px var(--mono);padding:8px 12px;color:var(--soft);border:1px solid var(--line);background:transparent;cursor:pointer}.filter[aria-pressed=true],.filter:hover{border-color:var(--accent);color:var(--ink)}.gallery{columns:3;column-gap:24px;padding-bottom:45px}.entry{display:inline-block;width:100%;break-inside:avoid;margin:0 0 28px;cursor:pointer}.entry img{width:100%;height:auto;max-height:680px;object-fit:cover;transition:filter .25s}.entry:hover img{filter:brightness(1.08)}.entry h3{font:500 20px/1.25 var(--display);margin:10px 0 5px}.category{font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}.caption{color:var(--soft);font-size:13px;margin:7px 0}.metadata{color:var(--soft);font:10px/1.6 var(--mono)}.empty{padding:52px 0;color:var(--soft);text-align:center;border-top:1px solid var(--line)}.section{border-top:1px solid var(--line);padding:54px 0;margin-top:8px}.section p{color:var(--soft);max-width:690px}.contact{max-width:620px;display:grid;gap:13px;margin-top:24px}.contact label{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}.contact input,.contact textarea{display:block;width:100%;margin-top:6px;padding:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);font:14px var(--body)}.contact textarea{min-height:125px;resize:vertical}.btn{justify-self:start;background:var(--accent);color:#10150f;padding:11px 17px;border:0;cursor:pointer;font:500 13px var(--body)}.status{color:var(--accent);font-size:13px;min-height:20px}footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--soft);font:10px var(--mono);display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.lightbox{position:fixed;inset:0;background:#05070bf2;z-index:100;display:none;align-items:center;justify-content:center;padding:50px 24px}.lightbox.open{display:flex}.lightbox img{max-width:92vw;max-height:78vh;object-fit:contain}.lightbox-caption{position:absolute;bottom:22px;left:20px;right:20px;text-align:center;color:var(--ink);font:11px var(--mono)}.close{position:absolute;right:24px;top:14px;color:var(--ink);font-size:34px;background:none;border:0;cursor:pointer}.banner{display:none;margin:20px 0;padding:13px;border:1px solid #644b36;color:#e8c49c;background:#211a15;font-size:13px}.banner.show{display:block}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(max-width:800px){.hero{grid-template-columns:1fr;gap:28px;padding:46px 0}.hero-image{aspect-ratio:16/10}.gallery{columns:2}.links{gap:14px}}@media(max-width:520px){.wrap{padding:0 18px}.gallery{columns:1}.hero h1{font-size:46px}nav{align-items:flex-start}.links{justify-content:flex-end;font-size:12px;gap:10px}.section-head h2,.section h2{font-size:26px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style></head>
 <body>
-
-<div class="horizon"><div class="horizon-fill" id="horizonFill"></div></div>
-
-<header>
-  <div class="wrap">
-    <nav>
-      <div class="logo">Frames<span>BySidu</span></div>
-      <div class="nav-links"><a href="#journal">Journal</a></div>
-    </nav>
-  </div>
-</header>
-
+<div class="progress"><span id="progressBar"></span></div>
+<header><div class="wrap"><nav><a class="logo" href="#">Frames <span>by Sidu.</span></a><div class="links"><a href="#journal">Journal</a><a href="#about">About</a><a href="#contact">Contact</a><a href="admin.html">Studio ↗</a></div></nav></div></header>
 <main class="wrap">
-
-  <div class="banner" id="configBanner">
-    Firebase isn't configured yet. Open this file, find <code>const firebaseConfig</code> near the bottom, and paste in the config object — the exact same one used in framesbysidu-upload.html.
-  </div>
-
-  <div class="hero">
-    <div>
-      <div class="eyebrow">Field journal</div>
-      <h1 class="title">Notes from where<br>the trees stop.</h1>
-      <p class="lede">A record of long drives, longer waits, and the light that occasionally makes both worth it. Landscape and wild-place photography.</p>
-      <div class="hero-meta">
-        <span><b id="statCount">0</b> photos</span>
-        <span>Updated <b id="statUpdated">—</b></span>
-      </div>
-    </div>
-    <div class="hero-art">
-      <svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice">
-        <defs><linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#0D1626"/><stop offset="55%" stop-color="#11203A"/><stop offset="100%" stop-color="#0A1424"/>
-        </linearGradient></defs>
-        <rect width="400" height="500" fill="url(#sky1)"/>
-        <polygon points="0,330 80,210 150,300 230,150 290,280 400,200 400,500 0,500" fill="#1B2C4D" opacity="0.6"/>
-        <polygon points="0,400 100,300 190,380 260,260 340,360 400,300 400,500 0,500" fill="#142038" opacity="0.85"/>
-        <polygon points="0,460 120,400 240,450 400,410 400,500 0,500" fill="#0B1426"/>
-        <circle cx="320" cy="120" r="34" fill="#C9DCFF" opacity="0.9"/>
-      </svg>
-    </div>
-  </div>
-
-  <div class="section-head" id="journal">
-    <h2>All photos</h2>
-    <div class="count" id="sectionCount">0 entries</div>
-  </div>
-
-  <div class="journal" id="galleryGrid"></div>
-
-  <div class="empty-state" id="emptyState" style="display:none;">
-    <svg viewBox="0 0 200 120" fill="none">
-      <polygon points="0,90 40,40 70,80 100,30 130,70 200,50 200,120 0,120" fill="#1C2A45"/>
-      <polygon points="0,105 60,85 110,108 200,90 200,120 0,120" fill="#10182A"/>
-    </svg>
-    <h3>No photos yet</h3>
-    <p>Add one in the upload tool — it'll show up here automatically.</p>
-  </div>
-
+<div class="banner" id="configBanner">Firebase is not configured yet. Add your real Firebase web-app config in this file and admin.html to connect your gallery.</div>
+<section class="hero"><div><div class="eyebrow">Through my lens · A visual journal</div><h1>Chasing light.<br>Keeping stories.</h1><p>Photographs, places and little moments worth remembering. A field journal of landscapes, quiet details and the world as it unfolds.</p><div class="hero-meta"><span><strong id="photoCount">0</strong> photographs</span><span>UPDATED <strong id="lastUpdated">—</strong></span></div></div><div><img class="hero-image" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=85" alt="Mountain lake reflecting the surrounding landscape" onerror="this.style.display='none';this.nextElementSibling.hidden=false"><div class="hero-image hero-fallback" hidden>LANDSCAPES · LIGHT · STORIES</div></div></section>
+<section id="journal"><div class="section-head"><h2>The visual journal</h2><div class="count" id="entryCount">0 entries</div></div><div class="filters" id="filters" aria-label="Filter photographs"></div><div class="gallery" id="gallery"></div><div class="empty" id="emptyState">The journal is waiting for its first frame.</div></section>
+<section class="section" id="about"><div class="eyebrow">Behind the lens</div><h2>About Frames by Sidu</h2><p>A personal photography journal collecting places, passing light and small details that deserve a second look. Every frame has a place, a moment and a story behind it.</p></section>
+<section class="section" id="contact"><div class="eyebrow">Say hello</div><h2>Contact</h2><p>Have a question, collaboration idea or a place you think belongs in this journal? Send a note below.</p><form class="contact" id="contactForm"><label>Your name<input id="contactName" maxlength="100" autocomplete="name" required></label><label>Email address<input id="contactEmail" type="email" maxlength="254" autocomplete="email" required></label><label>Message<textarea id="contactMessage" maxlength="3000" required></textarea></label><button class="btn" id="sendMessage" type="submit">Send message</button><div class="status" id="contactStatus" role="status"></div></form></section>
 </main>
-
-<footer>
-  <div class="wrap" style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:16px;">
-    <div class="logo">Frames<span>BySidu</span></div>
-    <div class="foot-note">© 2026 FramesBySidu</div>
-  </div>
-</footer>
-
-<div class="lightbox" id="lightbox">
-  <span class="lightbox-close" id="lightboxClose">&times;</span>
-  <img id="lightboxImg" alt="">
-  <div class="lightbox-cap" id="lightboxCap"></div>
-</div>
-
+<footer class="wrap"><span>© 2026 Frames by Sidu</span><span>MADE OF PLACES, LIGHT & LITTLE MOMENTS</span></footer>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photograph viewer"><button class="close" id="closeLightbox" aria-label="Close photograph">×</button><img id="lightboxImage" alt=""><div class="lightbox-caption" id="lightboxCaption"></div></div>
 <script>
-  window.addEventListener('scroll', function(){
-    var h = document.documentElement;
-    var scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
-    document.getElementById('horizonFill').style.width = (scrolled || 0) + '%';
-  });
-
-  // ===================================================================
-  // PASTE YOUR FIREBASE CONFIG BELOW.
-  // Firebase console → Project settings → General → "Your apps" → web app → SDK setup
-  // This MUST be the exact same config object as in framesbysidu-upload.html.
-  // ===================================================================
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-  // =================== END CONFIG ===================
-
-  let db, firebaseReady = false;
-  try{
-    if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY"){
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      firebaseReady = true;
-    } else {
-      document.getElementById('configBanner').classList.add('show');
-    }
-  }catch(e){
-    console.error('Firebase init failed', e);
-    document.getElementById('configBanner').classList.add('show');
-  }
-
-  function fielddata(p){ return [p.location, p.lens, p.exposure].filter(Boolean).join(' · '); }
-
-  function render(photos){
-    const grid = document.getElementById('galleryGrid');
-    const empty = document.getElementById('emptyState');
-
-    document.getElementById('statCount').textContent = photos.length;
-    document.getElementById('sectionCount').textContent = photos.length + (photos.length === 1 ? ' entry' : ' entries');
-    if(photos.length){
-      const latest = photos[0].createdAt ? photos[0].createdAt.toDate() : null;
-      if(latest) document.getElementById('statUpdated').textContent = latest.toLocaleDateString(undefined,{month:'short', year:'numeric'});
-    }
-
-    if(photos.length === 0){ grid.innerHTML=''; empty.style.display=''; return; }
-    empty.style.display = 'none';
-
-    grid.innerHTML = photos.map((p, i) => `
-      <article class="entry" data-idx="${i}">
-        <div class="entry-art"><img src="${p.imageUrl}" alt="${(p.title||'').replace(/"/g,'')}" loading="lazy"></div>
-        <h3>${p.title || 'Untitled'}</h3>
-        <div class="entry-fielddata">${fielddata(p)}</div>
-      </article>
-    `).join('');
-
-    grid.querySelectorAll('.entry').forEach((el, i) => el.addEventListener('click', () => openLightbox(photos[i])));
-  }
-
-  function openLightbox(p){
-    document.getElementById('lightboxImg').src = p.imageUrl;
-    document.getElementById('lightboxCap').textContent = [p.title, fielddata(p)].filter(Boolean).join(' — ');
-    document.getElementById('lightbox').classList.add('open');
-  }
-  document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
-  document.getElementById('lightbox').addEventListener('click', e => { if(e.target.id === 'lightbox') e.currentTarget.classList.remove('open'); });
-
-  if(firebaseReady){
-    db.collection('photos').orderBy('createdAt', 'desc').onSnapshot(
-      snap => render(snap.docs.map(d => d.data())),
-      err => {
-        console.error('Listener error', err);
-        document.getElementById('emptyState').style.display = '';
-        document.getElementById('emptyState').querySelector('h3').textContent = 'Could not load photos';
-        document.getElementById('emptyState').querySelector('p').textContent = 'Check your Firestore security rules allow public reads.';
-      }
-    );
-  }
-</script>
-
-</body>
-</html>
+const firebaseConfig={apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT.firebaseapp.com",projectId:"YOUR_PROJECT_ID",storageBucket:"YOUR_PROJECT.firebasestorage.app",messagingSenderId:"YOUR_SENDER_ID",appId:"YOUR_APP_ID"};
+const $=id=>document.getElementById(id);let db,photos=[],activeCategory="All";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl=s=>/^https:\/\//i.test(s||"")?esc(s):"";
+window.addEventListener("scroll",()=>{const d=document.documentElement;const max=d.scrollHeight-d.clientHeight;$("progressBar").style.width=(max?d.scrollTop/max*100:0)+"%"});
+function renderFilters(){const cats=["All",...new Set(photos.map(p=>(p.category||"Uncategorised").trim()))];if(!cats.includes(activeCategory))activeCategory="All";$("filters").innerHTML=cats.map(c=>'<button class="filter" type="button" data-cat="'+esc(c)+'" aria-pressed="'+(c===activeCategory)+'">'+esc(c)+'</button>').join("");$("filters").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{activeCategory=b.dataset.cat;render()}))}
+function render(){renderFilters();const shown=activeCategory==="All"?photos:photos.filter(p=>(p.category||"Uncategorised").trim()===activeCategory);$("photoCount").textContent=photos.length;$("entryCount").textContent=shown.length+(shown.length===1?" entry":" entries");$("gallery").innerHTML=shown.map((p,i)=>'<article class="entry" data-index="'+i+'"><img src="'+safeUrl(p.imageUrl)+'" alt="'+esc(p.title||"Photograph")+'" loading="lazy"><div class="category">'+esc(p.category||"Uncategorised")+'</div><h3>'+esc(p.title||"Untitled")+'</h3>'+(p.caption?'<p class="caption">'+esc(p.caption)+'</p>':'')+'<div class="metadata">'+esc([p.location,p.lens,p.exposure].filter(Boolean).join(" · "))+'</div></article>').join("");$("emptyState").hidden=shown.length>0;$("gallery").querySelectorAll(".entry").forEach((el,i)=>el.addEventListener("click",()=>openPhoto(shown[i])));if(photos[0]?.createdAt?.toDate)$("lastUpdated").textContent=photos[0].createdAt.toDate().toLocaleDateString(undefined,{month:"short",year:"numeric"})}
+function openPhoto(p){$("lightboxImage").src=safeUrl(p.imageUrl);$("lightboxImage").alt=p.title||"Photograph";$("lightboxCaption").textContent=[p.title,p.category,p.location,p.lens,p.exposure].filter(Boolean).join(" · ");$("lightbox").classList.add("open");$("closeLightbox").focus()}
+function closePhoto(){$("lightbox").classList.remove("open");$("lightboxImage").src=""}
+$("closeLightbox").addEventListener("click",closePhoto);$("lightbox").addEventListener("click",e=>{if(e.target===$("lightbox"))closePhoto()});document.addEventListener("keydown",e=>{if(e.key==="Escape")closePhoto()});
+try{if(firebaseConfig.apiKey!=="YOUR_API_KEY"&&firebaseConfig.projectId!=="YOUR_PROJECT_ID"){firebase.initializeApp(firebaseConfig);db=firebase.firestore();db.collection("photos").orderBy("createdAt","desc").onSnapshot(s=>{photos=s.docs.map(d=>({id:d.id,...d.data()}));render()},e=>{console.error(e);$("emptyState").textContent="Photos could not be loaded. Check Firebase configuration and Firestore rules."});$("configBanner").classList.remove("show")}else{$("configBanner").classList.add("show");render()}}catch(e){console.error(e);$("configBanner").classList.add("show");render()}
+$("contactForm").addEventListener("submit",async e=>{e.preventDefault();if(!db){$("contactStatus").textContent="Contact is unavailable until Firebase is configured.";return}const btn=$("sendMessage");btn.disabled=true;$("contactStatus").textContent="Sending…";try{await db.collection("contactMessages").add({name:$("contactName").value.trim(),email:$("contactEmail").value.trim(),message:$("contactMessage").value.trim(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});$("contactStatus").textContent="Thank you — your message has been sent.";$("contactForm").reset()}catch(err){console.error(err);$("contactStatus").textContent="Message could not be sent. Please try again later."}finally{btn.disabled=false}});
+</script></body></html>
